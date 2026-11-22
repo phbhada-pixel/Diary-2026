@@ -105,6 +105,8 @@ export const MonthlyDiaryView: React.FC<MonthlyDiaryViewProps> = ({
     try {
       await onUpdateEntry(currentDiary.id, editingEntry.date, editForm);
       setEditingEntry(null);
+    } catch {
+      // Error toast is already displayed by App.tsx
     } finally {
       setSavingEntry(false);
     }

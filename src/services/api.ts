@@ -1,6 +1,5 @@
 import type {
   ApplicationSettings,
-  DiaryChangeHistoryRecord,
   EmployeeMaster,
   GovernmentHolidayMaster,
   LeaveRecord,
@@ -10,48 +9,32 @@ import type {
   VillageMaster,
   WeeklyScheduleMaster,
 } from '../shared/types.ts';
+import { ApiError, type AppsScriptConnectionStatus, type BootstrapData } from './apiTypes.ts';
+import { staticAppsScriptApi } from './staticAppsScriptApi.ts';
 
-export interface BootstrapData {
-  employee: EmployeeMaster;
-  settings: ApplicationSettings;
-  subcenters: SubcenterMaster[];
-  villages: VillageMaster[];
-  weeklySchedules: WeeklyScheduleMaster[];
-  holidays: GovernmentHolidayMaster[];
-  leaves: LeaveRecord[];
-  specialEvents: SpecialEventMaster[];
-  monthlyDiaries: MonthlyDiaryDocument[];
-  changeHistory: DiaryChangeHistoryRecord[];
-}
-
-export interface AppsScriptConnectionStatus {
-  configured: boolean;
-  missingVars: string[];
-  backendMode: string;
-}
-
-export class ApiError extends Error {
-  status: number;
-  data: Record<string, unknown>;
-  constructor(message: string, status: number, data: Record<string, unknown> = {}) {
-    super(message);
-    this.status = status;
-    this.data = data;
-  }
-}
+export { ApiError, type AppsScriptConnectionStatus, type BootstrapData };
 
 async function fetchOnce(url: string, options?: RequestInit) {
-  const res = await fetch(url, {
-    credentials: 'same-origin',
-    cache: 'no-store',
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...options,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(options?.headers || {}),
+      },
+    });
+  } catch {
+    throw new ApiError(
+      'सर्व्हरशी संपर्क तुटला आहे किंवा नेटवर्क उपलब्ध नाही. कृपया काही क्षणांनी पुन्हा प्रयत्न करा.',
+      503
+    );
+  }
 
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
   const text = await res.text();
   let parsed: unknown = null;
   if (text) {
@@ -61,22 +44,27 @@ async function fetchOnce(url: string, options?: RequestInit) {
       parsed = null;
     }
   }
-  return { res, text, parsed };
+  const isProxyHtml =
+    parsed === null &&
+    (contentType.includes('text/html') || text.trimStart().startsWith('<!') || text.trimStart().startsWith('<html'));
+  return { res, text, parsed, isProxyHtml };
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const method = (options?.method || 'GET').toUpperCase();
-  const maxAttempts = method === 'GET' ? 3 : 1;
+  // Always allow up to 3 attempts when a reverse proxy returns HTML boot page (which never reached Express)
+  const maxAttempts = 3;
 
-  let lastResult: { res: Response; text: string; parsed: unknown } | null = null;
+  let lastResult: { res: Response; text: string; parsed: unknown; isProxyHtml: boolean } | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     lastResult = await fetchOnce(url, options);
 
-    // If a GET hits a proxy cold-start HTML response, retry briefly before failing
     const looksLikeNonJson = lastResult.parsed === null || typeof lastResult.parsed !== 'object';
-    if (looksLikeNonJson && attempt < maxAttempts) {
-      await new Promise((r) => setTimeout(r, 1200));
+    const safeToRetry =
+      lastResult.isProxyHtml || (method === 'GET' && looksLikeNonJson);
+    if (safeToRetry && attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 1500));
       continue;
     }
     break;
@@ -106,7 +94,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return parsed as T;
 }
 
-export const api = {
+const serverApi = {
   getConnectionStatus: () => request<AppsScriptConnectionStatus>('/api/status'),
   bootstrap: () => request<BootstrapData>('/api/bootstrap'),
 
@@ -282,3 +270,7 @@ export const api = {
       body: JSON.stringify(backupPayload),
     }),
 };
+
+const isStaticHostingMode = import.meta.env.VITE_STATIC_APPS_SCRIPT_MODE === 'true';
+
+export const api = isStaticHostingMode ? staticAppsScriptApi : serverApi;

@@ -66,6 +66,8 @@ export const SpecialEventView: React.FC<SpecialEventViewProps> = ({
         await onCreate(form);
       }
       resetForm();
+    } catch {
+      // Error toast is already displayed by App.tsx
     } finally {
       setSubmitting(false);
     }

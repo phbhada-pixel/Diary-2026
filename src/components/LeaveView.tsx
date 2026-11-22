@@ -87,6 +87,8 @@ export const LeaveView: React.FC<LeaveViewProps> = ({ leaves, onCreate, onUpdate
         setAutoUpdatedNotice('रजा कायमस्वरूपी जतन केली आहे. या महिन्याची दैनंदिनी तयार करताना ही रजा आपोआप लागू होईल.');
       }
       resetForm();
+    } catch {
+      // Error toast is already displayed by App.tsx; preserve user input in the form
     } finally {
       setSubmitting(false);
     }
@@ -329,13 +331,17 @@ export const LeaveView: React.FC<LeaveViewProps> = ({ leaves, onCreate, onUpdate
         onCancel={() => setDeleteTarget(null)}
         onConfirm={async () => {
           if (deleteTarget) {
-            const updatedMonths = await onDelete(deleteTarget.id);
-            if (updatedMonths.length > 0) {
-              setAutoUpdatedNotice(
-                `रजा रद्द केल्यानंतर संबंधित महिन्याची दैनंदिनी (${updatedMonths.join(', ')}) अद्ययावत झाली आहे.`
-              );
+            try {
+              const updatedMonths = await onDelete(deleteTarget.id);
+              if (updatedMonths.length > 0) {
+                setAutoUpdatedNotice(
+                  `रजा रद्द केल्यानंतर संबंधित महिन्याची दैनंदिनी (${updatedMonths.join(', ')}) अद्ययावत झाली आहे.`
+                );
+              }
+              setDeleteTarget(null);
+            } catch {
+              setDeleteTarget(null);
             }
-            setDeleteTarget(null);
           }
         }}
       />

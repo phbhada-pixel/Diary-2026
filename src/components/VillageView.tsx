@@ -77,6 +77,8 @@ export const VillageView: React.FC<VillageViewProps> = ({
         await onCreate(form);
       }
       resetForm();
+    } catch {
+      // Error toast is already displayed by App.tsx
     } finally {
       setSubmitting(false);
     }

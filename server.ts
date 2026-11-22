@@ -52,7 +52,7 @@ import {
   getWeekOccurrenceLabel,
   makeMonthId,
 } from './src/shared/marathi.ts';
-import type { MonthlyDiaryEntry, WeekdayKey, WeekOccurrence } from './src/shared/types.ts';
+import type { LeaveRecord, MonthlyDiaryEntry, WeekdayKey, WeekOccurrence } from './src/shared/types.ts';
 
 function handleRouteError(res: Response, err: unknown, fallbackMessage: string) {
   if (err instanceof AppsScriptNotConfiguredError) {
@@ -80,7 +80,8 @@ function handleRouteError(res: Response, err: unknown, fallbackMessage: string) 
 async function autoRefreshDiariesForDateRange(
   startDate: string,
   endDate: string,
-  reasonSummary: string
+  reasonSummary: string,
+  newlyAddedLeave?: LeaveRecord
 ): Promise<string[]> {
   const updatedMonthIds: string[] = [];
   const start = new Date(`${startDate}T00:00:00Z`);
@@ -91,6 +92,7 @@ async function autoRefreshDiariesForDateRange(
   const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
   const lastMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
 
+  let cachedLeaves: LeaveRecord[] | null = newlyAddedLeave ? [newlyAddedLeave] : null;
   let bundle: Awaited<ReturnType<typeof getBootstrapBundle>> | null = null;
 
   while (cursor <= lastMonth) {
@@ -101,23 +103,28 @@ async function autoRefreshDiariesForDateRange(
       visited.add(monthId);
       const existing = await getMonthlyDiaryById(monthId);
       if (existing) {
-        if (!bundle) bundle = await getBootstrapBundle();
+        if (!cachedLeaves) {
+          cachedLeaves = await listLeaves();
+        }
 
         const findLeave = (isoDate: string) =>
-          bundle!.leaves.find((lv) => isoDate >= lv.startDate && isoDate <= lv.endDate);
+          cachedLeaves!.find((lv) => isoDate >= lv.startDate && isoDate <= lv.endDate);
 
         // Compute fallback entries only if a previously marked leave date was cancelled
         let fallbackByDate: Map<string, MonthlyDiaryEntry> | null = null;
         let changed = false;
 
-        const patchedEntries: MonthlyDiaryEntry[] = existing.entries.map((entry) => {
+        const patchedEntries: MonthlyDiaryEntry[] = [];
+        for (const entry of existing.entries) {
           // Never touch dates outside the modified leave range
           if (entry.date < startDate || entry.date > endDate) {
-            return entry;
+            patchedEntries.push(entry);
+            continue;
           }
           // Preserve manual edits, Sundays, and Government Holidays
           if (entry.isManualEdit || entry.entryType === 'sunday' || entry.entryType === 'holiday') {
-            return entry;
+            patchedEntries.push(entry);
+            continue;
           }
 
           const activeLeave = findLeave(entry.date);
@@ -129,7 +136,7 @@ async function autoRefreshDiariesForDateRange(
               entry.workDescription !== nextDesc
             ) {
               changed = true;
-              return {
+              patchedEntries.push({
                 ...entry,
                 toPlace: 'रजा',
                 workDescription: nextDesc,
@@ -138,41 +145,47 @@ async function autoRefreshDiariesForDateRange(
                 adjustedDate: null,
                 sourceId: activeLeave.id,
                 notes: activeLeave.notes || '',
-              };
+              });
+              continue;
             }
-            return entry;
+            patchedEntries.push(entry);
+            continue;
           }
 
           // Leave was cancelled/shortened for this specific date: restore only this date
           if (entry.entryType === 'leave') {
             changed = true;
             if (!fallbackByDate) {
+              if (!bundle) bundle = await getBootstrapBundle();
               const refDoc = generateMonthlyDiary({
                 year: y,
                 month: m,
-                employee: bundle!.employee,
-                weeklySchedules: bundle!.weeklySchedules,
-                holidays: bundle!.holidays.filter((h) => h.year === y),
-                leaves: bundle!.leaves,
-                specialEvents: bundle!.specialEvents,
-                settings: bundle!.settings,
+                employee: bundle.employee,
+                weeklySchedules: bundle.weeklySchedules,
+                holidays: bundle.holidays.filter((h) => h.year === y),
+                leaves: bundle.leaves,
+                specialEvents: bundle.specialEvents,
+                settings: bundle.settings,
                 existingEntries: existing.entries,
                 preserveManualEdits: true,
               });
               fallbackByDate = new Map(refDoc.entries.map((e) => [e.date, e]));
             }
-            return fallbackByDate.get(entry.date) || {
-              ...entry,
-              toPlace: bundle!.settings.officePlace || 'प्राथमिक आरोग्य केंद्र भादा',
-              workDescription: 'कार्यालयीन कामकाज',
-              entryType: 'office_work',
-              sourceId: null,
-              notes: '',
-            };
+            patchedEntries.push(
+              fallbackByDate.get(entry.date) || {
+                ...entry,
+                toPlace: bundle?.settings.officePlace || 'प्राथमिक आरोग्य केंद्र भादा',
+                workDescription: 'कार्यालयीन कामकाज',
+                entryType: 'office_work',
+                sourceId: null,
+                notes: '',
+              }
+            );
+            continue;
           }
 
-          return entry;
-        });
+          patchedEntries.push(entry);
+        }
 
         if (changed) {
           const updatedDoc = {
@@ -526,8 +539,13 @@ async function startServer() {
         `रजा नोंदवली: ${formatDateDDMMYYYY(startDate)} ते ${formatDateDDMMYYYY(endDate)} (${totalDays} दिवस — ${leaveType.trim()})`
       );
 
-      // Update any affected saved monthly diaries directly in Google Sheets before confirming
-      const updatedMonths = await autoRefreshDiariesForDateRange(startDate, endDate, 'रजा नोंद');
+      // Fast-patch any affected saved monthly diaries without an extra getBootstrapBundle() round-trip
+      let updatedMonths: string[] = [];
+      try {
+        updatedMonths = await autoRefreshDiariesForDateRange(startDate, endDate, 'रजा नोंद', created);
+      } catch (refreshErr) {
+        console.warn('Leave saved, but secondary diary refresh skipped:', refreshErr);
+      }
       res.status(201).json({ record: created, updatedMonths });
     } catch (err) {
       handleRouteError(res, err, 'रजा जतन करताना त्रुटी आली.');
@@ -556,7 +574,12 @@ async function startServer() {
 
       const rangeStart = prev.startDate < startDate ? prev.startDate : startDate;
       const rangeEnd = prev.endDate > endDate ? prev.endDate : endDate;
-      const updatedMonths = await autoRefreshDiariesForDateRange(rangeStart, rangeEnd, 'रजा बदल');
+      let updatedMonths: string[] = [];
+      try {
+        updatedMonths = await autoRefreshDiariesForDateRange(rangeStart, rangeEnd, 'रजा बदल');
+      } catch (refreshErr) {
+        console.warn('Leave updated, but secondary diary refresh skipped:', refreshErr);
+      }
       res.json({ record: updated, updatedMonths });
     } catch (err) {
       handleRouteError(res, err, 'रजा अपडेट करताना त्रुटी.');
@@ -566,7 +589,12 @@ async function startServer() {
   app.delete('/api/leaves/:id', async (req, res) => {
     try {
       const prev = await deleteLeave(req.params.id, `रजा हटवली (${req.params.id})`);
-      const updatedMonths = await autoRefreshDiariesForDateRange(prev.startDate, prev.endDate, 'रजा रद्द');
+      let updatedMonths: string[] = [];
+      try {
+        updatedMonths = await autoRefreshDiariesForDateRange(prev.startDate, prev.endDate, 'रजा रद्द');
+      } catch (refreshErr) {
+        console.warn('Leave deleted, but secondary diary refresh skipped:', refreshErr);
+      }
       res.json({ deleted: true, updatedMonths });
     } catch (err) {
       handleRouteError(res, err, 'रजा हटवताना त्रुटी.');

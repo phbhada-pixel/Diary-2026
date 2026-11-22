@@ -41,6 +41,8 @@ export const EmployeeView: React.FC<EmployeeViewProps> = ({ employee, onSave }) 
       await onSave(form);
       setSavedNotice(true);
       setTimeout(() => setSavedNotice(false), 3000);
+    } catch {
+      // Error toast is already displayed by App.tsx
     } finally {
       setSaving(false);
     }

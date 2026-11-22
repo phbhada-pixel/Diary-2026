@@ -194,7 +194,7 @@ export default function App() {
           </div>
 
           <p className="mt-4 text-sm leading-relaxed text-slate-700">
-            Google Apps Script Web App URL किंवा Secret Token अद्याप सर्व्हरवर सेट केलेले नाही. कृपया AI Studio च्या <strong>Secrets / Environment Variables</strong> मध्ये खालील मूल्ये जोडा:
+            Google Apps Script Web App URL किंवा Secret Token अद्याप सेट केलेले नाही. कृपया <strong>AI Studio Secrets</strong> (किंवा GitHub Pages साठी <strong>Repository Settings → Secrets and variables → Actions</strong>) मध्ये खालील मूल्ये जोडा:
           </p>
 
           <ul className="mt-3 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-mono text-slate-800">

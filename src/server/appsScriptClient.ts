@@ -120,7 +120,7 @@ async function callAppsScript<T>(action: string, payload: Record<string, unknown
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 45_000);
 
   let res: Response;
   try {
