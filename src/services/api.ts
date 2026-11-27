@@ -271,6 +271,12 @@ const serverApi = {
     }),
 };
 
-const isStaticHostingMode = import.meta.env.VITE_STATIC_APPS_SCRIPT_MODE === 'true';
+const isGitHubPagesHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.endsWith('.github.io') ||
+    window.location.hostname === 'github.io');
+
+const isStaticHostingMode =
+  import.meta.env.VITE_STATIC_APPS_SCRIPT_MODE === 'true' || isGitHubPagesHost;
 
 export const api = isStaticHostingMode ? staticAppsScriptApi : serverApi;

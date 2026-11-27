@@ -32,8 +32,8 @@ jobs:
       - name: Build static production bundle
         env:
           VITE_STATIC_APPS_SCRIPT_MODE: 'true'
-          VITE_GOOGLE_APPS_SCRIPT_URL: ${{ secrets.GOOGLE_APPS_SCRIPT_URL }}
-          VITE_GOOGLE_APPS_SCRIPT_SECRET: ${{ secrets.GOOGLE_APPS_SCRIPT_SECRET }}
+          VITE_GOOGLE_APPS_SCRIPT_URL: ${{ secrets.GOOGLE_APPS_SCRIPT_URL || secrets.VITE_GOOGLE_APPS_SCRIPT_URL || vars.GOOGLE_APPS_SCRIPT_URL || vars.VITE_GOOGLE_APPS_SCRIPT_URL }}
+          VITE_GOOGLE_APPS_SCRIPT_SECRET: ${{ secrets.GOOGLE_APPS_SCRIPT_SECRET || secrets.VITE_GOOGLE_APPS_SCRIPT_SECRET || vars.GOOGLE_APPS_SCRIPT_SECRET || vars.VITE_GOOGLE_APPS_SCRIPT_SECRET }}
         run: npm run build
 
       - name: Configure Pages

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Menu, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2, Menu, RefreshCw, X } from 'lucide-react';
 import { api, ApiError, type BootstrapData } from './services/api.ts';
 import type { NavSection } from './shared/types.ts';
 import { makeMonthLabelMarathi } from './shared/marathi.ts';
@@ -44,6 +44,8 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(4);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const lastSyncTimestampRef = useRef<number>(0);
   const [toast, setToast] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
   const showToast = useCallback((type: 'error' | 'success', message: string) => {
@@ -104,6 +106,7 @@ export default function App() {
         monthlyDiaries: Array.isArray(bundle.monthlyDiaries) ? bundle.monthlyDiaries : [],
         changeHistory: Array.isArray(bundle.changeHistory) ? bundle.changeHistory : [],
       });
+      lastSyncTimestampRef.current = Date.now();
     } catch (err) {
       if (err instanceof ApiError && err.data?.notConfigured === true) {
         const mv = Array.isArray(err.data?.missingVars)
@@ -120,9 +123,37 @@ export default function App() {
     }
   }, [showToast]);
 
+  const handleManualSync = useCallback(async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await loadAll();
+      showToast('success', 'Google Sheets मधील ताजा डेटा यशस्वीरित्या सिंक केला.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSyncing, loadAll, showToast]);
+
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  // Automatically sync live data when returning to this browser tab from another link/device
+  useEffect(() => {
+    const syncOnFocus = () => {
+      if (document.visibilityState === 'hidden') return;
+      const elapsed = Date.now() - lastSyncTimestampRef.current;
+      if (elapsed > 15000 && !loading && !isSyncing) {
+        void loadAll();
+      }
+    };
+    window.addEventListener('focus', syncOnFocus);
+    document.addEventListener('visibilitychange', syncOnFocus);
+    return () => {
+      window.removeEventListener('focus', syncOnFocus);
+      document.removeEventListener('visibilitychange', syncOnFocus);
+    };
+  }, [loadAll, loading, isSyncing]);
 
   const runMutation = useCallback(
     async <T,>(fn: () => Promise<T>, successMsg?: string): Promise<T> => {
@@ -282,7 +313,17 @@ export default function App() {
             <span>{data.employee.fullName}</span>
           </div>
 
-          <div className="shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={isSyncing}
+              onClick={() => void handleManualSync()}
+              title="Google Sheets मधून ताजा डेटा सिंक करा"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60 whitespace-nowrap"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-teal-700 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'सिंक होत आहे...' : 'डेटा सिंक करा'}</span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveSection('monthly-diary')}
