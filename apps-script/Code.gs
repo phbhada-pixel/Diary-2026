@@ -217,12 +217,14 @@ var ENTRY_TYPE_LABELS = {
   holiday: 'शासकीय सुट्टी',
   leave: 'रजा',
   special_event: 'विशेष कार्यक्रम',
+  wednesday_weekly: 'आठवडी बैठक',
   wednesday_hq: 'बुधवार मुख्यालय बैठक',
   wednesday_asha: 'आशा बैठक व मासिक आढावा',
+  district_meeting: 'जिल्हास्तरीय बैठक',
   taluka_meeting: 'तालुकास्तरीय आढावा बैठक',
   subcenter_meeting: 'उपकेंद्रस्तरीय बैठक',
   weekly_schedule: 'वारनिहाय आरोग्य सेवा सत्र',
-  adjusted_schedule: 'समायोजित आरोग्य सेवा सत्र',
+  adjusted_schedule: 'वारनिहाय आरोग्य सेवा सत्र',
   office_work: 'कार्यालयीन कामकाज',
 };
 
@@ -642,9 +644,11 @@ function addRecord(sheetName, record, historySummary) {
     };
   } else if (sheetName === SHEET_NAMES.Special_Event_Master) {
     var evDate = String(record.date || '').trim();
-    for (var ev = 0; ev < existingRows.length; ev++) {
-      if (String(existingRows[ev].values[1] || '').trim() === evDate) {
-        throw createAppError_('Duplicate Record आढळला: या तारखेला आधीच विशेष कार्यक्रम नोंदवलेला आहे.', 409);
+    if (evDate.indexOf('WORK_LOG_') !== 0) {
+      for (var ev = 0; ev < existingRows.length; ev++) {
+        if (String(existingRows[ev].values[1] || '').trim() === evDate) {
+          throw createAppError_('Duplicate Record आढळला: या तारखेला आधीच विशेष कार्यक्रम नोंदवलेला आहे.', 409);
+        }
       }
     }
     created = {
@@ -1358,9 +1362,24 @@ function readDataRows_(sheet, colCount) {
   if (lastRow < 2) return [];
   var values = sheet.getRange(2, 1, lastRow - 1, colCount).getDisplayValues();
   var out = [];
+  var seenIds = {};
   for (var i = 0; i < values.length; i++) {
     if (!isRowEmpty_(values[i])) {
-      out.push({ rowNumber: i + 2, values: values[i] });
+      var rowNumber = i + 2;
+      var rowVals = values[i];
+      var idVal = String(rowVals[0] || '').trim();
+      if (!idVal || seenIds[idVal]) {
+        var prefix = (idVal && idVal.indexOf('_') > 0) ? idVal.split('_')[0] : 'rec';
+        var newId = generateUniqueId_(prefix);
+        rowVals[0] = newId;
+        try {
+          sheet.getRange(rowNumber, 1).setValue(newId);
+        } catch (_ignore) {}
+        seenIds[newId] = true;
+      } else {
+        seenIds[idVal] = true;
+      }
+      out.push({ rowNumber: rowNumber, values: rowVals });
     }
   }
   return out;
@@ -1553,13 +1572,18 @@ function holidayToRow_(h) {
   return [h.id, String(h.year), h.date, formatDateDDMMYYYY_(h.date), h.name, h.holidayType, h.notes, h.createdAt, h.updatedAt];
 }
 function rowToHoliday_(r) {
-  var dt = cell_(r, 2);
+  var dt = cell_(r, 2).trim();
+  var col3 = cell_(r, 3).trim();
+  var col4 = cell_(r, 4).trim();
+  var col5 = cell_(r, 5).trim();
+  var col3IsDate = /^\d{2}-\d{2}-\d{4}$/.test(col3) || /^\d{4}-\d{2}-\d{2}$/.test(col3);
+  var shifted = !col3IsDate && col3.length > 0 && !col5;
   return {
     id: cell_(r, 0),
     year: Number(cell_(r, 1)) || Number(dt.slice(0, 4)),
     date: dt,
-    name: cell_(r, 4),
-    holidayType: cell_(r, 5),
+    name: shifted ? col3 : col4,
+    holidayType: shifted ? (col4 || 'सार्वजनिक सुट्टी') : (col5 || 'सार्वजनिक सुट्टी'),
     notes: cell_(r, 6),
     createdAt: cell_(r, 7),
     updatedAt: cell_(r, 8),

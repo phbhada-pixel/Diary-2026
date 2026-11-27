@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarRange, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { ApplicationSettings, GovernmentHolidayMaster } from '../shared/types.ts';
-import { formatDateDDMMYYYY, HOLIDAY_TYPES, MARATHI_DAYS_BY_INDEX } from '../shared/marathi.ts';
+import {
+  formatDateDDMMYYYY,
+  HOLIDAY_TYPES,
+  MARATHI_DAYS_BY_INDEX,
+  resolveHolidayDisplayMeta,
+} from '../shared/marathi.ts';
 import { ConfirmDialog } from './ConfirmDialog.tsx';
 
 interface HolidayViewProps {
@@ -81,12 +86,13 @@ export const HolidayView: React.FC<HolidayViewProps> = ({
   };
 
   const handleEdit = (h: GovernmentHolidayMaster) => {
+    const meta = resolveHolidayDisplayMeta(h.date, h.name, h.holidayType);
     setSelectedYear(h.year);
     setEditingId(h.id);
     setForm({
       date: h.date,
-      name: h.name,
-      holidayType: h.holidayType,
+      name: meta.name,
+      holidayType: meta.holidayType,
       notes: h.notes,
     });
   };
@@ -305,42 +311,45 @@ export const HolidayView: React.FC<HolidayViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {yearHolidays.map((h, idx) => (
-                    <tr key={h.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-mono-num text-xs text-slate-500">{idx + 1}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="font-mono-num font-medium text-slate-900">
-                          {formatDateDDMMYYYY(h.date)}
-                        </span>
-                        <span className="ml-1.5 text-xs text-slate-500">({getDayLabel(h.date)})</span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        <div>{h.name}</div>
-                        {h.notes && <div className="text-xs text-slate-400">{h.notes}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{h.holidayType}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(h)}
-                            title="संपादित करा"
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-teal-700"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(h)}
-                            title="हटवा"
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {yearHolidays.map((h, idx) => {
+                    const meta = resolveHolidayDisplayMeta(h.date, h.name, h.holidayType);
+                    return (
+                      <tr key={h.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-mono-num text-xs text-slate-500">{idx + 1}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-mono-num font-medium text-slate-900">
+                            {formatDateDDMMYYYY(h.date)}
+                          </span>
+                          <span className="ml-1.5 text-xs text-slate-500">({getDayLabel(h.date)})</span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <div>{meta.name}</div>
+                          {h.notes && <div className="text-xs text-slate-400">{h.notes}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{meta.holidayType}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(h)}
+                              title="संपादित करा"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-teal-700"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(h)}
+                              title="हटवा"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -121,8 +121,8 @@ async function autoRefreshDiariesForDateRange(
             patchedEntries.push(entry);
             continue;
           }
-          // Preserve manual edits, Sundays, and Government Holidays
-          if (entry.isManualEdit || entry.entryType === 'sunday' || entry.entryType === 'holiday') {
+          // Preserve manual edits only; Leave is strictly final for all dates in leave range
+          if (entry.isManualEdit) {
             patchedEntries.push(entry);
             continue;
           }
@@ -157,16 +157,21 @@ async function autoRefreshDiariesForDateRange(
             changed = true;
             if (!fallbackByDate) {
               if (!bundle) bundle = await getBootstrapBundle();
+              const prevMonthId = makeMonthId(m === 1 ? y - 1 : y, m === 1 ? 12 : m - 1);
+              const previousMonthDiary =
+                bundle.monthlyDiaries.find((d) => d.id === prevMonthId) || null;
               const refDoc = generateMonthlyDiary({
                 year: y,
                 month: m,
                 employee: bundle.employee,
+                villages: bundle.villages,
                 weeklySchedules: bundle.weeklySchedules,
                 holidays: bundle.holidays.filter((h) => h.year === y),
                 leaves: bundle.leaves,
                 specialEvents: bundle.specialEvents,
                 settings: bundle.settings,
                 existingEntries: existing.entries,
+                previousMonthDiary,
                 preserveManualEdits: true,
               });
               fallbackByDate = new Map(refDoc.entries.map((e) => [e.date, e]));
@@ -616,15 +621,26 @@ async function startServer() {
       if (!date || !location?.trim() || !workDescription?.trim()) {
         return res.status(400).json({ error: 'दिनांक, कोठे आणि कामाचे स्वरूप आवश्यक आहे.' });
       }
+      const isMeetingRule = typeof date === 'string' && date.startsWith('MEETING_RULE_');
+      const isWorkLog = typeof date === 'string' && date.startsWith('WORK_LOG_');
+      const workLogIso = isWorkLog
+        ? String(date).slice('WORK_LOG_'.length).split('__')[0].slice(0, 10)
+        : '';
+      const label = eventType || 'इतर विशेष शासकीय कार्यक्रम';
+      const historySummary = isWorkLog
+        ? `सविस्तर कामाचा वृत्तांत जोडला: दि. ${formatDateDDMMYYYY(workLogIso)} — ${location.trim()}`
+        : isMeetingRule
+        ? `${label} जोडली (सेटिंग्ज): ${location.trim()} — ${workDescription.trim()}`
+        : `विशेष कार्यक्रम जोडला: ${formatDateDDMMYYYY(date)} — ${location.trim()}`;
       const created = await createSpecialEvent(
         {
           date,
-          eventType: eventType || 'इतर विशेष शासकीय कार्यक्रम',
+          eventType: label,
           location,
           workDescription,
           notes: notes || '',
         },
-        `विशेष कार्यक्रम जोडला: ${formatDateDDMMYYYY(date)} — ${location.trim()}`
+        historySummary
       );
       res.status(201).json(created);
     } catch (err) {
@@ -638,16 +654,27 @@ async function startServer() {
       if (!date || !location?.trim() || !workDescription?.trim()) {
         return res.status(400).json({ error: 'दिनांक, कोठे आणि कामाचे स्वरूप आवश्यक आहे.' });
       }
+      const isMeetingRule = typeof date === 'string' && date.startsWith('MEETING_RULE_');
+      const isWorkLog = typeof date === 'string' && date.startsWith('WORK_LOG_');
+      const workLogIso = isWorkLog
+        ? String(date).slice('WORK_LOG_'.length).split('__')[0].slice(0, 10)
+        : '';
+      const label = eventType || 'इतर विशेष शासकीय कार्यक्रम';
+      const historySummary = isWorkLog
+        ? `सविस्तर कामाचा वृत्तांत अद्ययावत केला: दि. ${formatDateDDMMYYYY(workLogIso)} — ${location.trim()}`
+        : isMeetingRule
+        ? `${label} बदलली (सेटिंग्ज): ${location.trim()} — ${workDescription.trim()}`
+        : `विशेष कार्यक्रम बदलला: ${formatDateDDMMYYYY(date)} — ${location.trim()}`;
       const updated = await updateSpecialEvent(
         req.params.id,
         {
           date,
-          eventType: eventType || 'इतर विशेष शासकीय कार्यक्रम',
+          eventType: label,
           location,
           workDescription,
           notes: notes || '',
         },
-        `विशेष कार्यक्रम बदलला: ${formatDateDDMMYYYY(date)} — ${location.trim()}`
+        historySummary
       );
       res.json(updated);
     } catch (err) {
@@ -706,16 +733,21 @@ async function startServer() {
       }
 
       const bundle = await getBootstrapBundle();
+      const prevMonthId = makeMonthId(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
+      const previousMonthDiary =
+        bundle.monthlyDiaries.find((d) => d.id === prevMonthId) || null;
       const generated = generateMonthlyDiary({
         year,
         month,
         employee: bundle.employee,
+        villages: bundle.villages,
         weeklySchedules: bundle.weeklySchedules,
         holidays: bundle.holidays.filter((h) => h.year === year),
         leaves: bundle.leaves,
         specialEvents: bundle.specialEvents,
         settings: bundle.settings,
         existingEntries: existing ? existing.entries : [],
+        previousMonthDiary,
         preserveManualEdits,
       });
 

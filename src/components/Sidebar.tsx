@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  BookOpenCheck,
   Building2,
   CalendarCheck2,
   CalendarClock,
@@ -27,6 +28,7 @@ interface SidebarProps {
 const NAV_ITEMS: { id: NavSection; label: string; group: 'main' | 'masters' | 'ops'; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'dashboard', label: 'डॅशबोर्ड', group: 'main', icon: LayoutDashboard },
   { id: 'monthly-diary', label: 'मासिक दौरा दैनंदिनी', group: 'main', icon: ClipboardList },
+  { id: 'daily-work-log', label: 'सविस्तर कामाचा वृत्तांत', group: 'main', icon: BookOpenCheck },
   { id: 'weekly-schedule', label: 'वारनिहाय कार्यक्रम', group: 'masters', icon: CalendarClock },
   { id: 'villages', label: 'गावांची माहिती', group: 'masters', icon: MapPin },
   { id: 'subcenters', label: 'उपकेंद्र माहिती', group: 'masters', icon: Building2 },

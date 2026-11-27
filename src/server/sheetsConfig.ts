@@ -373,13 +373,18 @@ export function holidayToRow(h: GovernmentHolidayMaster): string[] {
 }
 
 export function rowToHoliday(row: string[]): GovernmentHolidayMaster {
-  const date = cell(row, 2);
+  const date = cell(row, 2).trim();
+  const col3 = cell(row, 3).trim();
+  const col4 = cell(row, 4).trim();
+  const col5 = cell(row, 5).trim();
+  const col3LooksLikeDate = /^\d{2}-\d{2}-\d{4}$/.test(col3) || /^\d{4}-\d{2}-\d{2}$/.test(col3);
+  const shifted = !col3LooksLikeDate && col3.length > 0 && !col5;
   return {
     id: cell(row, 0),
     year: Number(cell(row, 1)) || Number(date.slice(0, 4)),
     date,
-    name: cell(row, 4),
-    holidayType: cell(row, 5),
+    name: shifted ? col3 : col4,
+    holidayType: shifted ? col4 || 'सार्वजनिक सुट्टी' : col5 || 'सार्वजनिक सुट्टी',
     notes: cell(row, 6),
     createdAt: cell(row, 7),
     updatedAt: cell(row, 8),

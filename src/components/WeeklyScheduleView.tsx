@@ -16,6 +16,7 @@ import {
   SESSION_TYPE_SUGGESTIONS,
   WEEK_OCCURRENCES,
 } from '../shared/marathi.ts';
+import { extractHeadquarterCities } from '../shared/travelMeta.ts';
 import { ConfirmDialog } from './ConfirmDialog.tsx';
 
 interface WeeklyScheduleViewProps {
@@ -69,6 +70,7 @@ export const WeeklyScheduleView: React.FC<WeeklyScheduleViewProps> = ({
   });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<WeeklyScheduleMaster | null>(null);
+  const regularVillages = extractHeadquarterCities(villages).regularVillages;
 
   const scheduleHistory = history.filter((h) => h.entityType === 'Weekly_Schedule_Master');
 
@@ -305,7 +307,7 @@ export const WeeklyScheduleView: React.FC<WeeklyScheduleViewProps> = ({
             </div>
           </div>
 
-          {villages.length > 0 && (
+          {regularVillages.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-slate-700">
                 नोंदवलेल्या गावांमधून निवडा
@@ -316,7 +318,7 @@ export const WeeklyScheduleView: React.FC<WeeklyScheduleViewProps> = ({
                 className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-600 focus:outline-none"
               >
                 <option value="">— गाव निवडा (किंवा खाली थेट लिहा) —</option>
-                {villages.map((v) => (
+                {regularVillages.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name} {v.subcenterName ? `(${v.subcenterName})` : ''}
                   </option>

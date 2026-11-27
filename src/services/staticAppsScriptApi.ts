@@ -163,7 +163,7 @@ async function patchSavedDiariesForLeaveRange(
             patchedEntries.push(entry);
             continue;
           }
-          if (entry.isManualEdit || entry.entryType === 'sunday' || entry.entryType === 'holiday') {
+          if (entry.isManualEdit) {
             patchedEntries.push(entry);
             continue;
           }
@@ -195,16 +195,21 @@ async function patchSavedDiariesForLeaveRange(
             changed = true;
             if (!fallbackByDate) {
               if (!bundle) bundle = await callAppsScriptDirect<BootstrapData>('bootstrap');
+              const prevMonthId = makeMonthId(m === 1 ? y - 1 : y, m === 1 ? 12 : m - 1);
+              const previousMonthDiary =
+                bundle.monthlyDiaries.find((d) => d.id === prevMonthId) || null;
               const refDoc = generateMonthlyDiary({
                 year: y,
                 month: m,
                 employee: bundle.employee,
+                villages: bundle.villages,
                 weeklySchedules: bundle.weeklySchedules,
                 holidays: bundle.holidays.filter((h) => h.year === y),
                 leaves: bundle.leaves,
                 specialEvents: bundle.specialEvents,
                 settings: bundle.settings,
                 existingEntries: existing.entries,
+                previousMonthDiary,
                 preserveManualEdits: true,
               });
               fallbackByDate = new Map(refDoc.entries.map((e) => [e.date, e]));
@@ -260,7 +265,46 @@ export const staticAppsScriptApi = {
     };
   },
 
-  bootstrap: () => callAppsScriptDirect<BootstrapData>('bootstrap'),
+  bootstrap: async (): Promise<BootstrapData> => {
+    const bundle = await callAppsScriptDirect<BootstrapData>('bootstrap');
+    const ensureUnique = <T extends { id: string }>(
+      sheetName: string,
+      prefix: string,
+      items: T[]
+    ): { items: T[]; hadDuplicates: boolean } => {
+      if (!Array.isArray(items)) return { items: [], hadDuplicates: false };
+      const seen = new Set<string>();
+      let hadDuplicates = false;
+      const fixed = items.map((item, idx) => {
+        const rawId = String(item.id || '').trim();
+        if (!rawId || seen.has(rawId)) {
+          hadDuplicates = true;
+          const suffix = Math.random().toString(36).slice(2, 8);
+          const nextId = `${prefix}_${Date.now()}_${idx}_${suffix}`;
+          seen.add(nextId);
+          return { ...item, id: nextId };
+        }
+        seen.add(rawId);
+        return item;
+      });
+      if (hadDuplicates) {
+        void callAppsScriptDirect('restoreBackup', {
+          data: { [sheetName]: fixed },
+        }).catch(() => {});
+      }
+      return { items: fixed, hadDuplicates };
+    };
+
+    return {
+      ...bundle,
+      subcenters: ensureUnique('Subcenter_Master', 'sub', bundle.subcenters).items,
+      villages: ensureUnique('Village_Master', 'vil', bundle.villages).items,
+      weeklySchedules: ensureUnique('Weekly_Schedule_Master', 'ws', bundle.weeklySchedules).items,
+      holidays: ensureUnique('Government_Holiday_Master', 'hol', bundle.holidays).items,
+      leaves: ensureUnique('Leave_Management', 'lv', bundle.leaves).items,
+      specialEvents: ensureUnique('Special_Event_Master', 'ev', bundle.specialEvents).items,
+    };
+  },
 
   updateEmployee: (payload: Partial<EmployeeMaster>) =>
     callAppsScriptDirect<EmployeeMaster>('updateRecord', {
@@ -438,22 +482,42 @@ export const staticAppsScriptApi = {
 
   createSpecialEvent: (
     payload: Pick<SpecialEventMaster, 'date' | 'eventType' | 'location' | 'workDescription' | 'notes'>
-  ) =>
-    callAppsScriptDirect<SpecialEventMaster>('addRecord', {
+  ) => {
+    const isMeetingRule = typeof payload.date === 'string' && payload.date.startsWith('MEETING_RULE_');
+    const isWorkLog = typeof payload.date === 'string' && payload.date.startsWith('WORK_LOG_');
+    const workLogIso = isWorkLog
+      ? String(payload.date).slice('WORK_LOG_'.length).split('__')[0].slice(0, 10)
+      : '';
+    return callAppsScriptDirect<SpecialEventMaster>('addRecord', {
       sheetName: 'Special_Event_Master',
       record: payload,
-      historySummary: `विशेष कार्यक्रम जोडला: ${formatDateDDMMYYYY(payload.date)} — ${payload.location.trim()}`,
-    }),
+      historySummary: isWorkLog
+        ? `सविस्तर कामाचा वृत्तांत जोडला: दि. ${formatDateDDMMYYYY(workLogIso)} — ${payload.location.trim()}`
+        : isMeetingRule
+        ? `${payload.eventType || 'बैठक'} जोडली (सेटिंग्ज): ${payload.location.trim()} — ${payload.workDescription.trim()}`
+        : `विशेष कार्यक्रम जोडला: ${formatDateDDMMYYYY(payload.date)} — ${payload.location.trim()}`,
+    });
+  },
   updateSpecialEvent: (
     id: string,
     payload: Pick<SpecialEventMaster, 'date' | 'eventType' | 'location' | 'workDescription' | 'notes'>
-  ) =>
-    callAppsScriptDirect<SpecialEventMaster>('updateRecord', {
+  ) => {
+    const isMeetingRule = typeof payload.date === 'string' && payload.date.startsWith('MEETING_RULE_');
+    const isWorkLog = typeof payload.date === 'string' && payload.date.startsWith('WORK_LOG_');
+    const workLogIso = isWorkLog
+      ? String(payload.date).slice('WORK_LOG_'.length).split('__')[0].slice(0, 10)
+      : '';
+    return callAppsScriptDirect<SpecialEventMaster>('updateRecord', {
       sheetName: 'Special_Event_Master',
       uniqueId: id,
       updates: payload,
-      historySummary: `विशेष कार्यक्रम बदलला: ${formatDateDDMMYYYY(payload.date)} — ${payload.location.trim()}`,
-    }),
+      historySummary: isWorkLog
+        ? `सविस्तर कामाचा वृत्तांत अद्ययावत केला: दि. ${formatDateDDMMYYYY(workLogIso)} — ${payload.location.trim()}`
+        : isMeetingRule
+        ? `${payload.eventType || 'बैठक'} बदलली (सेटिंग्ज): ${payload.location.trim()} — ${payload.workDescription.trim()}`
+        : `विशेष कार्यक्रम बदलला: ${formatDateDDMMYYYY(payload.date)} — ${payload.location.trim()}`,
+    });
+  },
   deleteSpecialEvent: (id: string) =>
     callAppsScriptDirect<{ deleted: boolean }>('deleteRecord', {
       sheetName: 'Special_Event_Master',
@@ -480,16 +544,24 @@ export const staticAppsScriptApi = {
       );
     }
     const bundle = await callAppsScriptDirect<BootstrapData>('bootstrap');
+    const prevMonthId = makeMonthId(
+      payload.month === 1 ? payload.year - 1 : payload.year,
+      payload.month === 1 ? 12 : payload.month - 1
+    );
+    const previousMonthDiary =
+      bundle.monthlyDiaries.find((d) => d.id === prevMonthId) || null;
     const generated = generateMonthlyDiary({
       year: payload.year,
       month: payload.month,
       employee: bundle.employee,
+      villages: bundle.villages,
       weeklySchedules: bundle.weeklySchedules,
       holidays: bundle.holidays.filter((h) => h.year === payload.year),
       leaves: bundle.leaves,
       specialEvents: bundle.specialEvents,
       settings: bundle.settings,
       existingEntries: existing ? existing.entries : [],
+      previousMonthDiary,
       preserveManualEdits,
     });
     if (existing) generated.createdAt = existing.createdAt;

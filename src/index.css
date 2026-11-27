@@ -30,16 +30,279 @@
 /* Official A4 Marathi Print / PDF Layout */
 @page {
   size: A4 portrait;
-  margin: 10mm 12mm;
+  margin: 10mm 11mm;
+}
+
+.print-only {
+  display: none;
+}
+
+.print-only.print-preview-visible,
+.print-only.print-pdf-capture {
+  display: block;
+}
+
+.print-sheet {
+  background-color: #ffffff;
+  color: #000000;
+  font-family: 'Noto Sans Devanagari', 'Mukta', sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.print-only.print-pdf-capture {
+  width: 794px;
+  padding: 32px 36px;
+  box-shadow: none;
+  border: none;
+}
+
+.diary-print-header {
+  text-align: center;
+  border-bottom: 1.5px solid #0f172a;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.diary-print-title {
+  font-family: 'Mukta', 'Noto Sans Devanagari', sans-serif;
+  font-size: 14pt;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #000000;
+  margin: 0;
+}
+
+.diary-print-subtitle {
+  font-size: 10pt;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #0f172a;
+  margin: 2px 0 0;
+}
+
+.diary-print-meta {
+  font-size: 9.5pt;
+  line-height: 1.3;
+  color: #1e293b;
+  margin: 1px 0 0;
+}
+
+.diary-print-month {
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #000000;
+  margin: 3px 0 0;
+}
+
+table.diary-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 9.2pt;
+  line-height: 1.3;
+  color: #000000;
+}
+
+table.diary-print-table thead {
+  display: table-header-group;
+}
+
+table.diary-print-table tfoot {
+  display: table-footer-group;
+}
+
+table.diary-print-table th,
+table.diary-print-table td {
+  border: 1px solid #1e293b;
+  padding: 3.5px 5.5px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+table.diary-print-table th {
+  background-color: #f1f5f9;
+  font-weight: 700;
+  text-align: left;
+  color: #0f172a;
+}
+
+table.diary-print-table .col-serial {
+  width: 6%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+table.diary-print-table .col-date {
+  width: 18%;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+table.diary-print-table .col-from {
+  width: 9%;
+}
+
+table.diary-print-table .col-to {
+  width: 22%;
+}
+
+table.diary-print-table .col-travel {
+  width: 9%;
+  text-align: center;
+}
+
+table.diary-print-table .col-km {
+  width: 8%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+table.diary-print-table .col-work {
+  width: 28%;
+}
+
+table.diary-print-table tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+table.diary-print-table tr.diary-print-row-sunday td {
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+table.diary-print-table tr.diary-print-row-holiday td {
+  background-color: #fffbeb;
+}
+
+table.diary-print-table tr.diary-print-row-leave td {
+  background-color: #fef2f2;
+}
+
+.diary-print-summary {
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  font-size: 8.5pt;
+  line-height: 1.35;
+  color: #0f172a;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.diary-print-signatures {
+  margin-top: 26px;
+  padding: 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 9.5pt;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #000000;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.diary-print-sig-col {
+  text-align: center;
+  min-width: 170px;
+}
+
+.diary-print-sig-space {
+  margin-top: 26px;
+}
+
+.diary-print-page-footer {
+  margin-top: 8px;
+  text-align: right;
+  font-size: 8pt;
+  color: #475569;
+}
+
+/* Book-Print Paragraph Report Layout (सविस्तर कामाचा वृत्तांत) */
+.book-report-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 16px;
+  padding: 6px 10px;
+  border-top: 1px solid #94a3b8;
+  border-bottom: 1px solid #94a3b8;
+  background-color: #f8fafc;
+  font-size: 10pt;
+  color: #0f172a;
+}
+
+.book-report-body {
+  margin-top: 12px;
+  color: #0f172a;
+}
+
+.book-report-entry {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #cbd5e1;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.book-report-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+
+.book-report-point-head {
+  font-family: 'Mukta', 'Noto Sans Devanagari', sans-serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.book-report-point-meta {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.book-report-paragraph {
+  font-family: 'Noto Sans Devanagari', 'Mukta', sans-serif;
+  font-size: 11pt;
+  line-height: 1.85;
+  text-align: justify;
+  text-indent: 2em;
+  color: #0f172a;
+  margin: 0 0 8px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.book-report-paragraph:last-child {
+  margin-bottom: 0;
 }
 
 @media print {
+  html,
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     font-family: 'Noto Sans Devanagari', 'Mukta', sans-serif !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .no-print {
@@ -59,18 +322,9 @@
     max-width: none !important;
   }
 
-  table.diary-print-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10.5pt;
-    line-height: 1.35;
-  }
-
   table.diary-print-table th,
   table.diary-print-table td {
     border: 1px solid #1e293b !important;
-    padding: 4px 6px !important;
-    vertical-align: top;
   }
 
   table.diary-print-table th {
@@ -78,11 +332,15 @@
     font-weight: 700 !important;
   }
 
-  table.diary-print-table tr {
-    page-break-inside: avoid;
+  table.diary-print-table tr.diary-print-row-sunday td {
+    background-color: #f8fafc !important;
   }
-}
 
-.print-only {
-  display: none;
+  table.diary-print-table tr.diary-print-row-holiday td {
+    background-color: #fffbeb !important;
+  }
+
+  table.diary-print-table tr.diary-print-row-leave td {
+    background-color: #fef2f2 !important;
+  }
 }

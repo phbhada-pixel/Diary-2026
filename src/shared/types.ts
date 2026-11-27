@@ -1,8 +1,38 @@
 export type WeekdayKey = 'monday' | 'tuesday' | 'thursday' | 'friday' | 'saturday';
 
+export type MeetingWeekdayKey = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+
 export type WeekOccurrence = 1 | 2 | 3 | 4 | 5;
 
 export type HolidayAdjustmentDirection = 'next' | 'previous';
+
+export type MeetingLevel = 'जिल्हास्तरीय बैठक' | 'तालुकास्तरीय बैठक';
+
+export type MeetingScheduleMode =
+  | 'free_working_day'
+  | 'weekday_occurrence'
+  | 'fixed_day'
+  | 'specific_date';
+
+export interface MeetingRule {
+  id: string;
+  rawDateKey: string;
+  isRecurring: boolean;
+  level: MeetingLevel;
+  location: string;
+  workDescription: string;
+  scheduleMode: MeetingScheduleMode;
+  preferredStartDay?: number;
+  preferredEndDay?: number;
+  weekday?: MeetingWeekdayKey;
+  weekNumber?: WeekOccurrence;
+  dayOfMonth?: number;
+  specificDate?: string;
+  active: boolean;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type DiaryEntryType =
   | 'sunday'
@@ -10,11 +40,13 @@ export type DiaryEntryType =
   | 'leave'
   | 'wednesday_weekly'
   | 'wednesday_asha'
+  | 'district_meeting'
   | 'taluka_meeting'
   | 'subcenter_meeting'
   | 'special_event'
   | 'weekly_schedule'
   | 'adjusted_schedule'
+  | 'lab_sample_visit'
   | 'office_work'
   | 'manual';
 
@@ -184,5 +216,6 @@ export type NavSection =
   | 'leaves'
   | 'special-events'
   | 'monthly-diary'
+  | 'daily-work-log'
   | 'reports'
   | 'settings';

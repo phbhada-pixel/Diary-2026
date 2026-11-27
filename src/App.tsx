@@ -13,6 +13,7 @@ import { HolidayView } from './components/HolidayView.tsx';
 import { LeaveView } from './components/LeaveView.tsx';
 import { SpecialEventView } from './components/SpecialEventView.tsx';
 import { MonthlyDiaryView } from './components/MonthlyDiaryView.tsx';
+import { DailyWorkLogView } from './components/DailyWorkLogView.tsx';
 import { ReportsView } from './components/ReportsView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 
@@ -26,6 +27,7 @@ const SECTION_TITLES: Record<NavSection, string> = {
   leaves: 'रजा व्यवस्थापन',
   'special-events': 'विशेष कार्यक्रम',
   'monthly-diary': 'मासिक दौरा दैनंदिनी',
+  'daily-work-log': 'सविस्तर कामाचा वृत्तांत',
   reports: 'अहवाल व इतिहास',
   settings: 'सेटिंग्ज',
 };
@@ -248,7 +250,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 print:min-h-0 print:bg-white">
       <Sidebar
         activeSection={activeSection}
         onSelect={setActiveSection}
@@ -257,7 +259,7 @@ export default function App() {
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      <div className="lg:pl-64 flex min-h-screen flex-col">
+      <div className="lg:pl-64 flex min-h-screen flex-col print:pl-0 print:min-h-0 print:block">
         {/* Top Bar (3-zone clean header, hidden during A4 print) */}
         <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 no-print">
           <div className="flex items-center gap-3 min-w-0">
@@ -319,7 +321,7 @@ export default function App() {
         )}
 
         {/* Active View Viewport */}
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto print:p-0 print:m-0 print:max-w-none">
           {activeSection === 'dashboard' && (
             <DashboardView
               employee={data.employee}
@@ -442,6 +444,7 @@ export default function App() {
           {activeSection === 'special-events' && (
             <SpecialEventView
               events={data.specialEvents}
+              villages={data.villages}
               onCreate={async (payload) => {
                 await runMutation(() => api.createSpecialEvent(payload), 'विशेष कार्यक्रम जतन केला.');
               }}
@@ -451,12 +454,17 @@ export default function App() {
               onDelete={async (id) => {
                 await runMutation(() => api.deleteSpecialEvent(id), 'विशेष कार्यक्रम हटवला.');
               }}
+              onCreateVillage={async (vPayload) => {
+                await api.createVillage(vPayload);
+              }}
             />
           )}
 
           {activeSection === 'monthly-diary' && (
             <MonthlyDiaryView
               employee={data.employee}
+              holidays={data.holidays}
+              villages={data.villages}
               diaries={data.monthlyDiaries}
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
@@ -479,6 +487,33 @@ export default function App() {
             />
           )}
 
+          {activeSection === 'daily-work-log' && (
+            <DailyWorkLogView
+              employee={data.employee}
+              villages={data.villages}
+              subcenters={data.subcenters}
+              specialEvents={data.specialEvents}
+              onCreateRecord={async (payload) => {
+                await runMutation(
+                  () => api.createSpecialEvent(payload),
+                  'सविस्तर कामाची नवीन नोंद जतन केली.'
+                );
+              }}
+              onUpdateRecord={async (id, payload) => {
+                await runMutation(
+                  () => api.updateSpecialEvent(id, payload),
+                  'सविस्तर कामाची नोंद अद्ययावत केली.'
+                );
+              }}
+              onDeleteRecord={async (id) => {
+                await runMutation(
+                  () => api.deleteSpecialEvent(id),
+                  'सविस्तर कामाची नोंद हटवली.'
+                );
+              }}
+            />
+          )}
+
           {activeSection === 'reports' && (
             <ReportsView
               employee={data.employee}
@@ -496,8 +531,24 @@ export default function App() {
           {activeSection === 'settings' && (
             <SettingsView
               settings={data.settings}
+              specialEvents={data.specialEvents}
               onSave={async (payload) => {
                 await runMutation(() => api.updateSettings(payload), 'प्रणाली सेटिंग्ज जतन केल्या.');
+              }}
+              onAddMeeting={async (payload) => {
+                await runMutation(
+                  () => api.createSpecialEvent(payload),
+                  `${payload.eventType} यशस्वीरित्या जतन केली.`
+                );
+              }}
+              onUpdateMeeting={async (id, payload) => {
+                await runMutation(
+                  () => api.updateSpecialEvent(id, payload),
+                  `${payload.eventType} अद्ययावत केली.`
+                );
+              }}
+              onDeleteMeeting={async (id) => {
+                await runMutation(() => api.deleteSpecialEvent(id), 'बैठक हटवली.');
               }}
             />
           )}

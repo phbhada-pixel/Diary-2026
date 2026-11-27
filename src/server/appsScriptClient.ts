@@ -216,6 +216,41 @@ export async function verifyAppsScriptConnection(): Promise<AppsScriptVerificati
   return report;
 }
 
+async function deduplicateSheetIds<T extends { id: string }>(
+  sheetName: string,
+  prefix: string,
+  items: T[]
+): Promise<{ items: T[]; hadDuplicates: boolean }> {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { items: [], hadDuplicates: false };
+  }
+  const seen = new Set<string>();
+  let hadDuplicates = false;
+  const fixed = items.map((item, idx) => {
+    const rawId = String(item.id || '').trim();
+    if (!rawId || seen.has(rawId)) {
+      hadDuplicates = true;
+      const suffix = Math.random().toString(36).slice(2, 8);
+      const nextId = `${prefix}_${Date.now()}_${idx}_${suffix}`;
+      seen.add(nextId);
+      return { ...item, id: nextId };
+    }
+    seen.add(rawId);
+    return item;
+  });
+
+  if (hadDuplicates) {
+    try {
+      await callAppsScript<{ restored: boolean }>('restoreBackup', {
+        data: { [sheetName]: fixed },
+      });
+    } catch {
+      // Fallback to in-memory deduplicated IDs if write-back fails
+    }
+  }
+  return { items: fixed, hadDuplicates };
+}
+
 export async function getBootstrapBundle(): Promise<{
   employee: EmployeeMaster;
   settings: ApplicationSettings;
@@ -253,7 +288,26 @@ export async function getBootstrapBundle(): Promise<{
       500
     );
   }
-  return bundle;
+
+  const [subcentersRes, villagesRes, schedulesRes, holidaysRes, leavesRes, eventsRes] =
+    await Promise.all([
+      deduplicateSheetIds(SHEET_NAMES.Subcenter_Master, 'sub', bundle.subcenters),
+      deduplicateSheetIds(SHEET_NAMES.Village_Master, 'vil', bundle.villages),
+      deduplicateSheetIds(SHEET_NAMES.Weekly_Schedule_Master, 'ws', bundle.weeklySchedules),
+      deduplicateSheetIds(SHEET_NAMES.Government_Holiday_Master, 'hol', bundle.holidays),
+      deduplicateSheetIds(SHEET_NAMES.Leave_Management, 'lv', bundle.leaves),
+      deduplicateSheetIds(SHEET_NAMES.Special_Event_Master, 'ev', bundle.specialEvents),
+    ]);
+
+  return {
+    ...bundle,
+    subcenters: subcentersRes.items,
+    villages: villagesRes.items,
+    weeklySchedules: schedulesRes.items,
+    holidays: holidaysRes.items,
+    leaves: leavesRes.items,
+    specialEvents: eventsRes.items,
+  };
 }
 
 // --- 1. Employee_Master ---

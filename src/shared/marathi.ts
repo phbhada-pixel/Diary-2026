@@ -1,4 +1,11 @@
-import type { DiaryEntryType, WeekdayKey, WeekOccurrence } from './types.ts';
+import type {
+  DiaryEntryType,
+  GovernmentHolidayMaster,
+  MeetingWeekdayKey,
+  MonthlyDiaryEntry,
+  WeekdayKey,
+  WeekOccurrence,
+} from './types.ts';
 
 export const MARATHI_MONTHS: Record<number, string> = {
   1: 'जानेवारी',
@@ -48,6 +55,15 @@ export const SCHEDULE_WEEKDAYS: { key: WeekdayKey; label: string; dayIndex: numb
   { key: 'saturday', label: 'शनिवार', dayIndex: 6 },
 ];
 
+export const ALL_WORKING_WEEKDAYS: { key: MeetingWeekdayKey; label: string; dayIndex: number }[] = [
+  { key: 'monday', label: 'सोमवार', dayIndex: 1 },
+  { key: 'tuesday', label: 'मंगळवार', dayIndex: 2 },
+  { key: 'wednesday', label: 'बुधवार', dayIndex: 3 },
+  { key: 'thursday', label: 'गुरुवार', dayIndex: 4 },
+  { key: 'friday', label: 'शुक्रवार', dayIndex: 5 },
+  { key: 'saturday', label: 'शनिवार', dayIndex: 6 },
+];
+
 export const WEEK_OCCURRENCES: { value: WeekOccurrence; label: string }[] = [
   { value: 1, label: 'पहिला' },
   { value: 2, label: 'दुसरा' },
@@ -79,7 +95,19 @@ export const SPECIAL_EVENT_TYPES = [
   'जिल्हास्तरीय बैठक',
   'तालुकास्तरीय बैठक',
   'प्रशिक्षण कार्यक्रम',
-  'इतर विशेष शासकीय कार्यक्रम',
+];
+
+export const SPECIAL_WORK_DESCRIPTIONS = [
+  'पल्स पोलिओ विशेष लसीकरण मोहीम',
+  'विशेष लसीकरण सत्र',
+  'आरोग्य तपासणी शिबिर व उपचार',
+  'गृहभेट व आरोग्य सर्वेक्षण मोहीम',
+  'माता व बाल आरोग्य सेवा सत्र',
+  'साथरोग नियंत्रण व पाणी नमुना तपासणी',
+  'आरोग्य शिक्षण व जनजागृती मोहीम',
+  'वरिष्ठ अधिकाऱ्यांसह क्षेत्रीय पाहणी व आढावा',
+  'प्रशिक्षण व कार्यशाळा सहभाग',
+  'रक्त व पाणी नमुने संकलन मोहीम',
 ];
 
 export const SESSION_TYPE_SUGGESTIONS = [
@@ -97,11 +125,13 @@ export const ENTRY_TYPE_LABELS: Record<DiaryEntryType, string> = {
   leave: 'रजा',
   wednesday_weekly: 'आठवडी बैठक',
   wednesday_asha: 'आशा व मासिक आढावा बैठक',
+  district_meeting: 'जिल्हास्तरीय बैठक',
   taluka_meeting: 'तालुकास्तरीय बैठक',
   subcenter_meeting: 'उपकेंद्रस्तरीय बैठक',
   special_event: 'विशेष कार्यक्रम',
   weekly_schedule: 'वारनिहाय गाव सत्र',
-  adjusted_schedule: 'सुट्टी समायोजित सत्र',
+  adjusted_schedule: 'वारनिहाय गाव सत्र',
+  lab_sample_visit: 'नमुने जमा करणे (लातूर)',
   office_work: 'कार्यालयीन कामकाज',
   manual: 'मॅन्युअल नोंद',
 };
@@ -123,13 +153,229 @@ export function dayIndexToWeekdayKey(dayIndex: number): WeekdayKey | null {
   }
 }
 
-export function getWeekdayLabel(key: WeekdayKey): string {
-  return SCHEDULE_WEEKDAYS.find((d) => d.key === key)?.label ?? key;
+export function getWeekdayLabel(key: WeekdayKey | MeetingWeekdayKey): string {
+  return ALL_WORKING_WEEKDAYS.find((d) => d.key === key)?.label ?? key;
 }
 
 export function getWeekOccurrenceLabel(num: WeekOccurrence): string {
   return WEEK_OCCURRENCES.find((w) => w.value === num)?.label ?? String(num);
 }
+
+/**
+ * Official Maharashtra Government Gazetted Public Holidays for 2026
+ * (used when a Google Sheet row has only a generic label like "महाराष्ट्र शासन सार्वजनिक सुट्टी").
+ */
+export const MAHARASHTRA_GOVT_HOLIDAYS_2026: Record<string, string> = {
+  '2026-01-26': 'प्रजासत्ताक दिन',
+  '2026-02-15': 'महाशिवरात्री',
+  '2026-02-19': 'छत्रपती शिवाजी महाराज जयंती',
+  '2026-03-03': 'होळी (दुसरा दिवस / धुलिवंदन)',
+  '2026-03-19': 'गुढीपाडवा',
+  '2026-03-21': 'रमजान ईद (ईद-उल-फित्र)',
+  '2026-03-26': 'राम नवमी',
+  '2026-03-31': 'महावीर जयंती',
+  '2026-04-03': 'गुड फ्रायडे',
+  '2026-04-14': 'डॉ. बाबासाहेब आंबेडकर जयंती',
+  '2026-05-01': 'महाराष्ट्र दिन व बुद्ध पौर्णिमा',
+  '2026-05-28': 'बकरी ईद (ईद-उल-झुआ)',
+  '2026-06-26': 'मोहरम',
+  '2026-08-15': 'स्वातंत्र्य दिन व पारशी नववर्ष दिन',
+  '2026-08-26': 'ईद-ए-मिलाद',
+  '2026-09-14': 'गणेश चतुर्थी',
+  '2026-10-02': 'महात्मा गांधी जयंती',
+  '2026-10-20': 'दसरा (विजयादशमी)',
+  '2026-11-08': 'दिवाळी (लक्ष्मीपूजन)',
+  '2026-11-10': 'दिवाळी (बलिप्रतिपदा)',
+  '2026-11-24': 'गुरुनानक जयंती',
+  '2026-12-25': 'ख्रिसमस (नाताळ)',
+};
+
+const FIXED_ANNUAL_HOLIDAYS_BY_MMDD: Record<string, string> = {
+  '01-26': 'प्रजासत्ताक दिन',
+  '02-19': 'छत्रपती शिवाजी महाराज जयंती',
+  '04-14': 'डॉ. बाबासाहेब आंबेडकर जयंती',
+  '05-01': 'महाराष्ट्र दिन',
+  '08-15': 'स्वातंत्र्य दिन',
+  '10-02': 'महात्मा गांधी जयंती',
+  '12-25': 'ख्रिसमस (नाताळ)',
+};
+
+const GENERIC_HOLIDAY_NAMES = new Set([
+  'शासकीय सुट्टी',
+  'सार्वजनिक सुट्टी',
+  'महाराष्ट्र शासन सार्वजनिक सुट्टी',
+  'महाराष्ट्र शासन शासकीय सुट्टी',
+  'राष्ट्रीय सुट्टी',
+  'स्थानिक सुट्टी',
+  'ऐच्छिक सुट्टी',
+  'सुट्टी',
+]);
+
+export function isGenericHolidayName(raw: string | null | undefined): boolean {
+  const clean = (raw || '').trim();
+  if (!clean) return true;
+  if (GENERIC_HOLIDAY_NAMES.has(clean)) return true;
+  // Also catch combinations like "महाराष्ट्र शासन सार्वजनिक सुट्टी — शासकीय सुट्टी"
+  const parts = clean
+    .split(/[—–-]/u)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length > 0 && parts.every((p) => GENERIC_HOLIDAY_NAMES.has(p));
+}
+
+export function resolveKnownHolidayNameByDate(isoDate: string): string | null {
+  if (!isoDate || isoDate.length < 10) return null;
+  const key = isoDate.slice(0, 10);
+  if (MAHARASHTRA_GOVT_HOLIDAYS_2026[key]) {
+    return MAHARASHTRA_GOVT_HOLIDAYS_2026[key];
+  }
+  const mmdd = key.slice(5, 10);
+  return FIXED_ANNUAL_HOLIDAYS_BY_MMDD[mmdd] || null;
+}
+
+/**
+ * Resolves the specific Marathi holiday name & type for a date/record.
+ * Never returns generic "महाराष्ट्र शासन सार्वजनिक सुट्टी" when the real holiday name is known.
+ */
+export function resolveHolidayDisplayMeta(
+  isoDate: string,
+  rawName?: string | null,
+  rawType?: string | null,
+  sameDateHolidays: GovernmentHolidayMaster[] = []
+): { name: string; holidayType: string; workDescription: string } {
+  // Collect any non-generic names from matching holiday records on this date
+  const specificNames: string[] = [];
+  const pushIfSpecific = (candidate?: string | null) => {
+    const clean = (candidate || '').trim();
+    if (clean && !isGenericHolidayName(clean) && !specificNames.includes(clean)) {
+      specificNames.push(clean);
+    }
+  };
+
+  for (const h of sameDateHolidays) {
+    pushIfSpecific(h.name);
+  }
+  pushIfSpecific(rawName);
+
+  const knownName = resolveKnownHolidayNameByDate(isoDate);
+  const resolvedName =
+    specificNames.length > 0
+      ? specificNames.join(' व ')
+      : knownName || (rawName || '').trim() || 'शासकीय सुट्टी';
+
+  const typeFromList = sameDateHolidays.find((h) => h.holidayType?.trim())?.holidayType?.trim();
+  const resolvedType = (rawType || '').trim() || typeFromList || 'सार्वजनिक सुट्टी';
+
+  const workDescription = isGenericHolidayName(resolvedName)
+    ? resolvedName
+    : `${resolvedName} — ${resolvedType}`;
+
+  return {
+    name: resolvedName,
+    holidayType: resolvedType,
+    workDescription,
+  };
+}
+
+/**
+ * Formats diary rows cleanly for screen, Dashboard preview, A4 print/PDF, and Excel export:
+ * 1. Holiday rows ALWAYS clearly show WHICH holiday it is (never generic "शासकीय सुट्टी" / "महाराष्ट्र शासन सार्वजनिक सुट्टी").
+ * 2. Holidays & Sundays always show "भादा मुख्यालय" in "कोठे".
+ * 3. Village session rows show ONLY the village name in "कोठे" (never append "(उपकेंद्र ...)").
+ * 4. No adjustment notes or internal [MODE:...] / [KM:...] tags appear inside displayed notes.
+ */
+export function resolveDiaryEntryDisplay(
+  entry: MonthlyDiaryEntry,
+  holidays: GovernmentHolidayMaster[] = []
+): { toPlace: string; workDescription: string; notes: string; holidayName: string | null } {
+  const cleanNotes = (raw: string): string => {
+    if (!raw) return '';
+    const trimmed = raw
+      .replace(/\s*\[MODE:[^\]]+\]\s*/gi, ' ')
+      .replace(/\s*\[KM:[0-9]+(?:\.[0-9]+)?\]\s*/gi, ' ')
+      .replace(/\s*\[DIST_KM:[0-9]+(?:\.[0-9]+)?\]\s*/gi, ' ')
+      .replace(/\s*\(दि\.\s*[^)]*समायोजित\)\s*/gu, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+    if (/^मूळ नियोजित तारीख:/u.test(trimmed)) return '';
+    return trimmed;
+  };
+
+  if (entry.isManualEdit) {
+    return {
+      toPlace: entry.toPlace,
+      workDescription: entry.workDescription,
+      notes: cleanNotes(entry.notes || ''),
+      holidayName: null,
+    };
+  }
+
+  if (entry.entryType === 'sunday') {
+    return {
+      toPlace: 'भादा मुख्यालय',
+      workDescription: entry.workDescription || 'रविवार (साप्ताहिक सुट्टी)',
+      notes: cleanNotes(entry.notes || ''),
+      holidayName: null,
+    };
+  }
+
+  if (entry.entryType === 'holiday') {
+    const matchedHolidays = holidays.filter(
+      (h) => (entry.sourceId && h.id === entry.sourceId) || h.date === entry.date
+    );
+
+    // Extract candidate name from existing workDescription if not generic
+    let descNameCandidate = '';
+    if (entry.workDescription) {
+      const stripped = entry.workDescription
+        .replace(/^शासकीय सुट्टी\s*[—–-]\s*/u, '')
+        .replace(/\s*[—–-]\s*(सार्वजनिक सुट्टी|शासकीय सुट्टी|राष्ट्रीय सुट्टी|स्थानिक सुट्टी|ऐच्छिक सुट्टी)\s*$/u, '')
+        .replace(/\s*\([^)]*\)\s*$/u, '')
+        .trim();
+      if (!isGenericHolidayName(stripped)) {
+        descNameCandidate = stripped;
+      }
+    }
+
+    const meta = resolveHolidayDisplayMeta(
+      entry.date,
+      descNameCandidate,
+      matchedHolidays[0]?.holidayType,
+      matchedHolidays
+    );
+
+    return {
+      toPlace: 'भादा मुख्यालय',
+      workDescription: meta.workDescription,
+      notes: cleanNotes(entry.notes || ''),
+      holidayName: isGenericHolidayName(meta.name) ? null : meta.name,
+    };
+  }
+
+  if (entry.entryType === 'weekly_schedule' || entry.entryType === 'adjusted_schedule') {
+    const cleanedPlace = (entry.toPlace || '')
+      .replace(/\s*\(\s*उपकेंद्र[^)]*\)\s*$/u, '')
+      .trim();
+    const cleanedDesc = (entry.workDescription || '')
+      .replace(/\s*\(दि\.\s*[^)]*समायोजित\)\s*$/u, '')
+      .trim();
+    return {
+      toPlace: cleanedPlace || entry.toPlace,
+      workDescription: cleanedDesc || entry.workDescription,
+      notes: cleanNotes(entry.notes || ''),
+      holidayName: null,
+    };
+  }
+
+  return {
+    toPlace: entry.toPlace,
+    workDescription: entry.workDescription,
+    notes: cleanNotes(entry.notes || ''),
+    holidayName: null,
+  };
+}
+
+export const resolveHolidayEntryDisplay = resolveDiaryEntryDisplay;
 
 /** Format YYYY-MM-DD -> DD-MM-YYYY */
 export function formatDateDDMMYYYY(isoDate: string | null | undefined): string {

@@ -27,7 +27,10 @@ import {
   getFinancialYearLabel,
   getFinancialYearMonths,
   makeMonthId,
+  resolveHolidayEntryDisplay,
 } from '../shared/marathi.ts';
+import { isMeetingRuleRecord } from '../shared/meetingRules.ts';
+import { extractHeadquarterCities, resolveDiaryEntryTravel } from '../shared/travelMeta.ts';
 
 interface DashboardViewProps {
   employee: EmployeeMaster;
@@ -68,6 +71,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const fyMonths = getFinancialYearMonths(fyStartYear);
 
   const summary = currentDiary?.summary;
+  const visibleSpecialEventsCount = specialEvents.filter((ev) => !isMeetingRuleRecord(ev)).length;
+  const { regularVillages } = extractHeadquarterCities(villages);
 
   return (
     <div className="space-y-6">
@@ -148,7 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-medium text-slate-500">विशेष कार्यक्रम</p>
           <p className="mt-2 font-mono-num text-2xl font-semibold text-teal-700">
-            {summary ? summary.specialEvents : specialEvents.length}
+            {summary ? summary.specialEvents : visibleSpecialEventsCount}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             {summary ? 'या महिन्यातील विशेष कार्यक्रम' : 'एकूण विशेष कार्यक्रम'}
@@ -161,7 +166,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {weeklySchedules.length}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            गावे: {villages.length} · उपकेंद्रे: {subcenters.length}
+            गावे: {regularVillages.length} · उपकेंद्रे: {subcenters.length}
           </p>
         </div>
       </div>
@@ -239,20 +244,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
                     <th className="px-4 py-2.5 w-12">अ.क्र.</th>
                     <th className="px-4 py-2.5 w-36">दिनांक</th>
-                    <th className="px-4 py-2.5 w-24">कोठून</th>
+                    <th className="px-4 py-2.5 w-20">कोठून</th>
                     <th className="px-4 py-2.5">कोठे</th>
+                    <th className="px-3 py-2.5 w-20 text-center">प्रवास</th>
+                    <th className="px-3 py-2.5 w-20 text-center">किमी</th>
                     <th className="px-4 py-2.5">कामाचे स्वरूप</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {currentDiary.entries.slice(0, 12).map((row) => {
+                    const display = resolveHolidayEntryDisplay(row, holidays);
+                    const travel = resolveDiaryEntryTravel(row, display.toPlace, villages);
                     const rowBg =
-                      row.entryType === 'sunday' || row.entryType === 'holiday'
+                      row.entryType === 'sunday'
                         ? 'bg-slate-50/90 text-slate-500'
+                        : row.entryType === 'holiday'
+                        ? 'bg-orange-50/50 text-slate-700'
                         : row.entryType === 'leave'
                         ? 'bg-red-50/50 text-red-900'
-                        : row.entryType === 'adjusted_schedule'
-                        ? 'bg-amber-50/50'
+                        : row.entryType === 'district_meeting'
+                        ? 'bg-indigo-50/40'
+                        : row.entryType === 'lab_sample_visit'
+                        ? 'bg-sky-50/50'
                         : '';
                     return (
                       <tr key={row.date} className={`hover:bg-slate-50/80 ${rowBg}`}>
@@ -266,9 +279,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <span className="ml-1.5 text-xs text-slate-500">({row.dayNameMarathi})</span>
                         </td>
                         <td className="px-4 py-2.5 text-slate-700">{row.fromPlace}</td>
-                        <td className="px-4 py-2.5 font-medium text-slate-900">{row.toPlace}</td>
+                        <td className="px-4 py-2.5 font-medium text-slate-900">{display.toPlace}</td>
+                        <td className="px-3 py-2.5 text-center text-slate-700 whitespace-nowrap">
+                          {travel.travelMode}
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-mono-num text-slate-800 whitespace-nowrap">
+                          {travel.distanceKm > 0 ? `${travel.distanceKm} किमी` : '—'}
+                        </td>
                         <td className="px-4 py-2.5 text-slate-700">
-                          {row.workDescription}
+                          {display.workDescription}
                           <span className="ml-2 text-xs text-slate-400">
                             · {ENTRY_TYPE_LABELS[row.entryType]}
                           </span>
