@@ -227,30 +227,72 @@ export default function App() {
           </div>
 
           <p className="mt-4 text-sm leading-relaxed text-slate-700">
-            Google Apps Script Web App URL किंवा Secret Token अद्याप सेट केलेले नाही. कृपया <strong>AI Studio Secrets</strong> (किंवा GitHub Pages साठी <strong>Repository Settings → Secrets and variables → Actions</strong>) मध्ये खालील मूल्ये जोडा:
+            AI Studio आणि GitHub Pages वरून एकाच Google Sheet मधील डेटा दिसण्यासाठी खाली तुमचा{' '}
+            <strong>Google Apps Script Web App URL</strong> आणि <strong>Secret Token</strong> टाकून जतन करा:
           </p>
 
-          <ul className="mt-3 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-mono text-slate-800">
-            {missingEnvVars.map((v) => (
-              <li key={v} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-                <span>{v}</span>
-              </li>
-            ))}
-          </ul>
+          <form
+            className="mt-4 space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const inputUrl = String(formData.get('gasUrl') || '').trim();
+              const inputToken = String(formData.get('gasToken') || '').trim();
+              if (!inputUrl || !inputToken) {
+                showToast('error', 'कृपया Web App URL आणि Secret Token दोन्ही भरा.');
+                return;
+              }
+              const { saveStaticRuntimeConfig } = await import('./services/staticAppsScriptApi.ts');
+              saveStaticRuntimeConfig(inputUrl, inputToken);
+              setLoading(true);
+              void loadAll();
+            }}
+          >
+            <div>
+              <label className="block text-xs font-semibold text-slate-700">
+                १. Google Apps Script Web App URL (GOOGLE_APPS_SCRIPT_URL)
+              </label>
+              <input
+                name="gasUrl"
+                type="url"
+                required
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900 focus:border-teal-600 focus:outline-none"
+              />
+            </div>
 
-          <div className="mt-5 flex justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                setLoading(true);
-                void loadAll();
-              }}
-              className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
-            >
-              पुन्हा तपासा
-            </button>
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700">
+                २. Google Apps Script Secret Token (GOOGLE_APPS_SCRIPT_SECRET)
+              </label>
+              <input
+                name="gasToken"
+                type="password"
+                required
+                placeholder="तुमचा Secret Token टाका"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900 focus:border-teal-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  void loadAll();
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                पुन्हा तपासा
+              </button>
+              <button
+                type="submit"
+                className="rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800"
+              >
+                जोडणी जतन करा व डेटा लोड करा
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );

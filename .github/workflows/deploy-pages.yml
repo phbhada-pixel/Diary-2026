@@ -27,17 +27,22 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build static production bundle
         env:
           VITE_STATIC_APPS_SCRIPT_MODE: 'true'
           VITE_GOOGLE_APPS_SCRIPT_URL: ${{ secrets.GOOGLE_APPS_SCRIPT_URL || secrets.VITE_GOOGLE_APPS_SCRIPT_URL || vars.GOOGLE_APPS_SCRIPT_URL || vars.VITE_GOOGLE_APPS_SCRIPT_URL }}
           VITE_GOOGLE_APPS_SCRIPT_SECRET: ${{ secrets.GOOGLE_APPS_SCRIPT_SECRET || secrets.VITE_GOOGLE_APPS_SCRIPT_SECRET || vars.GOOGLE_APPS_SCRIPT_SECRET || vars.VITE_GOOGLE_APPS_SCRIPT_SECRET }}
-        run: npm run build
+        run: |
+          npm run build
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload dist artifact
         uses: actions/upload-pages-artifact@v3

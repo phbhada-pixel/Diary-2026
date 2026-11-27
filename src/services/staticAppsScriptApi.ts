@@ -42,9 +42,44 @@ function cleanEnvValue(raw: unknown): string {
   return val;
 }
 
+const STORAGE_URL_KEY = 'phc_bhada_gas_url';
+const STORAGE_TOKEN_KEY = 'phc_bhada_gas_token';
+
+function readStoredValue(key: string): string {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return cleanEnvValue(window.localStorage.getItem(key));
+    }
+  } catch {
+    // ignore storage access issues
+  }
+  return '';
+}
+
+export function saveStaticRuntimeConfig(url: string, token: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const cleanedUrl = cleanEnvValue(url);
+      const cleanedToken = cleanEnvValue(token);
+      if (cleanedUrl) {
+        window.localStorage.setItem(STORAGE_URL_KEY, cleanedUrl);
+      }
+      if (cleanedToken) {
+        window.localStorage.setItem(STORAGE_TOKEN_KEY, cleanedToken);
+      }
+    }
+  } catch {
+    // ignore storage access issues
+  }
+}
+
 function getStaticConfig() {
-  const url = cleanEnvValue(import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL);
-  const token = cleanEnvValue(import.meta.env.VITE_GOOGLE_APPS_SCRIPT_SECRET);
+  const url =
+    cleanEnvValue(import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL) ||
+    readStoredValue(STORAGE_URL_KEY);
+  const token =
+    cleanEnvValue(import.meta.env.VITE_GOOGLE_APPS_SCRIPT_SECRET) ||
+    readStoredValue(STORAGE_TOKEN_KEY);
   const missingVars: string[] = [];
   if (!url || !/^https?:\/\/.+/i.test(url)) {
     missingVars.push('GOOGLE_APPS_SCRIPT_URL');
